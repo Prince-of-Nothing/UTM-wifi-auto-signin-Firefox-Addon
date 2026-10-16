@@ -26,9 +26,15 @@
   let submitted = false;
   let finished = false;
   let observer = null;
+  let btnRef = null;        // remembered once found; the portal replaces the form on success
 
   const $ = (sel) => document.querySelector(sel);
-  const text = () => (document.body && document.body.innerText) || '';
+  // innerText is what Firefox gives us; textContent keeps this working in the
+  // jsdom-based local test as well.
+  const text = () => {
+    if (!document.body) return '';
+    return document.body.innerText || document.body.textContent || '';
+  };
   const send = (m) => { try { browser.runtime.sendMessage(m).catch(() => {}); } catch (e) {} };
 
   /* --------------------------------------------------------- checkbox */
@@ -56,6 +62,7 @@
     if (!btn) return;
     submitted = true;
     acceptTerms();                              // no-op when already accepted
+    btnRef = btn;
     send({ type: 'clicked' });
     btn.click();
     watchOutcome();
@@ -82,7 +89,9 @@
       if (CFG.ONLINE_TOKENS.some((t) => body.includes(t))) { finish(true, 'already connected'); return; }
 
       // Portal replaced its form after our click -> it accepted the login.
-      if (!findButton() && Date.now() - started > 4000) { finish(true, 'portal form disappeared'); return; }
+      if (btnRef && !document.contains(btnRef) && Date.now() - started > 2000) {
+        finish(true, 'portal form disappeared'); return;
+      }
       if (Date.now() - started > CFG.DEADLINE_MS) finish(false, 'no confirmation from the portal');
     }, CFG.TICK_MS);
   }

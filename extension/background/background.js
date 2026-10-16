@@ -40,6 +40,10 @@ let CONFIG = {
   COOLDOWN_MS: 20000,
   MAX_ATTEMPTS: 5,
   DEBUG: false,
+  // LOCAL TESTING ONLY (see _comment_local_testing_only in config.json):
+  // a portal URL to fall back on when no live captive-portal redirect has
+  // been observed yet, i.e. when you are NOT actually on the UTM network.
+  portalUrl: null,
 };
 
 let PORTAL_PREFIX = '';            // scheme + host + port + path
@@ -330,6 +334,7 @@ browser.tabs.onRemoved.addListener((tabId) => {
 browser.runtime.onMessage.addListener((msg, sender) => {
   switch (msg && msg.type) {
     case 'clicked':
+      log('content.js submitted the form from tab', sender.tab && sender.tab.id);
       clearAlarm('attempt-timeout');
       setAlarm('attempt-timeout', CONFIG.CONNECT_TIMEOUT_MS);
       setStatus('login submitted — waiting for the network to open');
@@ -349,9 +354,6 @@ browser.runtime.onMessage.addListener((msg, sender) => {
 
 /* --------------------------------------------------------- icon activation */
 
-// Tapping the toolbar icon flips automatic connecting on/off. The popup opens
-// alongside it and shows what the switch currently does; clicking the icon
-// again flips it back.
 // The toolbar icon IS the switch: one click stops automatic connecting, the
 // next click resumes it and immediately retries. No popup, no dialog.
 browser.browserAction.onClicked.addListener(() => {
@@ -385,6 +387,11 @@ async function loadConfig() {
 async function boot() {
   await loadConfig();
   await restore();
+  if (st.portalUrl === null && CONFIG.portalUrl && isPortalUrl(CONFIG.portalUrl)) {
+    st.portalUrl = CONFIG.portalUrl;
+    st.portalSeenAt = now();
+    warn('TEST MODE: using the hardcoded portalUrl from config.json instead of a live captive-portal redirect.');
+  }
   st.ready = true;
   refreshIcon();
   armPolling();

@@ -10,5 +10,8 @@
   "CONNECT_TIMEOUT_MS": 15000,
   "COOLDOWN_MS": 20000,
   "MAX_ATTEMPTS": 5,
-  "DEBUG": false
+  "DEBUG": true,
+
+  "_comment_local_testing_only": "TEMPORARY - REMOVE BEFORE SIGNING. portalUrl is a fallback used only when no live captive-portal redirect has been seen yet (i.e. you are NOT actually on the UTM network). The URL below was copied from a saved page and contains that machine's uaddress/umac plus an expiring successUrl/pushPageId, so it will almost certainly be rejected by the portal for you. It exists purely so the background tab + content script plumbing can be exercised locally.",
+  "portalUrl": "https://sb.sdn.utm.md:19008/portalpage/0103a076acdb455c96798816d6be7008/20231203231637/pc/auth.html?apmac=e86de9401260&uaddress=172.18.5.7&umac=d29c130b79a6&authType=2&lang=custom&ssid=VVRNLVdpTmV0VW5pX0dVRVNU&successUrl=0000000100000001CFA077962079A1EE2B6A38EEB8261951BD207BCDF92CB5E8E99E47C7DED9A80B4863E3EB5C3BE747A96720BE89365603&pushPageId=72a0ffe6-8e46-4b87-a0bd-cf3586f0d510"
 }

@@ -90,6 +90,17 @@ if manifest.get("optional_permissions"):
 else:
     ok("no optional_permissions")
 
+# ------------------------------------------------------- local test hooks
+cfg_body = (SRC / "config.json").read_text(encoding="utf-8")
+if '"DEBUG": true' in cfg_body:
+    fail("config.json has DEBUG: true \u2014 flip it to false before signing")
+else:
+    ok("DEBUG off")
+if "portalUrl" in cfg_body:
+    fail("config.json still carries the temporary 'portalUrl' test hook \u2014 delete it before signing")
+else:
+    ok("no hardcoded portal URL in config.json")
+
 # ------------------------------------------------------------ file integrity
 bg = manifest["background"]["scripts"]
 if bg != ["background/background.js"]:

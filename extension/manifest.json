@@ -1,0 +1,56 @@
+{
+  "manifest_version": 2,
+  "name": "UTMSDN Guest Auto-Connect",
+  "version": "1.0.0",
+  "description": "Automatically accepts the terms and clicks Conectare on the UTM-WiNetUni_GUEST captive portal (sb.sdn.utm.md:19008), then reconnects when the 2-hour session drops.",
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "browser_action": {
+    "default_icon": {
+      "16": "icons/icon.svg",
+      "32": "icons/icon.svg"
+    },
+    "default_title": "UTMSDN Guest Auto-Connect",
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "scripts": [
+      "background/background.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://sb.sdn.utm.md:19008/portalpage/*"
+      ],
+      "js": [
+        "content/content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "permissions": [
+    "webRequest",
+    "*://detectportal.firefox.com/*",
+    "*://captive.apple.com/*",
+    "*://sb.sdn.utm.md:19008/*",
+    "tabs",
+    "storage",
+    "alarms"
+  ],
+  "optional_permissions": [
+    "*://sb.sdn.utm.md:19008/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "utm-guest-autoconnect@localhost",
+      "strict_min_version": "78.0"
+    },
+    "gecko_android": {
+      "strict_min_version": "113.0"
+    }
+  }
+}

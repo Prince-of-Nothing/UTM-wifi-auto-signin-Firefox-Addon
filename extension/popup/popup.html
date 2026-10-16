@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>UTMSDN Auto-Connect</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <header><img src="../icons/icon.svg" alt="" width="20" height="20"><h1>UTMSDN Guest Auto-Connect</h1></header>
+  <main>
+    <p id="status" class="state">…</p>
+    <dl>
+      <dt>Network</dt><dd id="net">—</dd>
+      <dt>Portal</dt><dd id="host">—</dd>
+      <dt>Session</dt><dd id="session">—</dd>
+      <dt>Totals</dt><dd id="totals">—</dd>
+    </dl>
+    <div class="row">
+      <label class="sw"><input type="checkbox" id="enabled"><span>Automatic</span></label>
+      <button id="reconnect" type="button">Reconnect now</button>
+    </div>
+    <details><summary>Details</summary><pre id="url"></pre></details>
+  </main>
+  <footer>v<span id="ver"></span> · this extension only touches one site</footer>
+  <script src="popup.js"></script>
+</body>
+</html>

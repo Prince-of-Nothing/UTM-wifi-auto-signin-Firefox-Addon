@@ -1,44 +1,49 @@
-/* UTMSDN Guest Auto-Connect — portal page driver.
+/* UTM Guest Auto-Connect — portal page driver.
  *
  * Runs ONLY on https://sb.sdn.utm.md:19008/portalpage/*.  It reproduces the
  * two clicks a human makes on the anonymous-auth page:
  *    1. tick "Confirm Acceptarea Termenilor și Condițiilor"  (#agreeCheck)
  *    2. press "Conectare"                                    (#annoyBtn)
  *
- * Idempotent: at most one submit per document, guarded by `submitted`.
+ * Nothing else is touched: the terms link (#readmeLink) is deliberately NOT
+ * clicked, no form field is read or altered, and at most one submit happens
+ * per document (guarded by `submitted`).
  */
 
 (() => {
   const CFG = {
-    BTN: "#annoyBtn",
-    CHECK_IMG: "#agreeCheck",
-    TERMS_LINK: "#readmeLink",
-    // Markers from the portal's own auth.js / check.js result messages.
-    SUCCESS_TOKENS: ["autentificare reusita", "login success", "conectat cu succes", "connected successfully"],
-    ERROR_TOKENS: ["esuat", "a fost refuzat", "invalid", "expired"],
-    ONLINE_TOKENS: ["deconectare", "logout", "delog"],
+    BTN: '#annoyBtn',
+    CHECK_IMG: '#agreeCheck',
+    // Markers taken from the portal's own result messages (auth.js/check.js).
+    SUCCESS_TOKENS: ['autentificare reusita', 'login success', 'conectat cu succes', 'connected successfully'],
+    ERROR_TOKENS: ['esuat', 'a fost refuzat', 'invalid', 'expired'],
+    ONLINE_TOKENS: ['deconectare', 'logout', 'delog'],
     DEADLINE_MS: 20000,
-    TICK_MS: 300
+    TICK_MS: 300,
   };
 
-  let PORTAL_PREFIX = "";   // filled in from config.json at boot
+  let PORTAL_PREFIX = '';   // filled in from config.json at boot
   let submitted = false;
   let finished = false;
   let observer = null;
+  let btnRef = null;        // remembered once found; the portal replaces the form on success
 
   const $ = (sel) => document.querySelector(sel);
-  const text = () => (document.body && document.body.innerText) || "";
+  // innerText is what Firefox gives us; textContent keeps this working in the
+  // jsdom-based local test as well.
+  const text = () => {
+    if (!document.body) return '';
+    return document.body.innerText || document.body.textContent || '';
+  };
   const send = (m) => { try { browser.runtime.sendMessage(m).catch(() => {}); } catch (e) {} };
 
   /* --------------------------------------------------------- checkbox */
 
-  const isChecked = (img) => !!img && !/uncheck/i.test(img.getAttribute("src") || "");
+  const isChecked = (img) => !!img && !/uncheck/i.test(img.getAttribute('src') || '');
 
   function acceptTerms() {
-    const link = $(CFG.TERMS_LINK);
-    if (link) link.click();                        // portal toggles via turnReadmePage()
     const img = $(CFG.CHECK_IMG);
-    if (img && !isChecked(img)) img.click();        // fallback: toggle directly
+    if (img && !isChecked(img)) img.click();   // toggleAgreeCheck() flips the src
     return isChecked($(CFG.CHECK_IMG));
   }
 
@@ -47,8 +52,8 @@
   function findButton() {
     const b = $(CFG.BTN);
     if (b) return b;
-    return Array.from(document.querySelectorAll("input[type=button],input[type=submit],button"))
-      .find((el) => /^(conectare|connect|log ?in|autentificare)$/i.test((el.value || el.textContent || "").trim())) || null;
+    return Array.from(document.querySelectorAll('input[type=button],input[type=submit],button'))
+      .find((el) => /^(conectare|connect|log ?in|autentificare)$/i.test((el.value || el.textContent || '').trim())) || null;
   }
 
   function trySubmit() {
@@ -56,8 +61,9 @@
     const btn = findButton();
     if (!btn) return;
     submitted = true;
-    acceptTerms();                                  // no-op when already accepted
-    send({ type: "clicked" });
+    acceptTerms();                              // no-op when already accepted
+    btnRef = btn;
+    send({ type: 'clicked' });
     btn.click();
     watchOutcome();
   }
@@ -75,19 +81,18 @@
     const poll = setInterval(() => {
       if (finished) { clearInterval(poll); return; }
 
-      if (!location.href.startsWith(PORTAL_PREFIX)) { finish(true, "left portal page"); return; }
+      if (!location.href.startsWith(PORTAL_PREFIX)) { finish(true, 'left portal page'); return; }
 
       const body = text().toLowerCase();
       const r = scan(body);
       if (r) { finish(r.ok, r.via || r.why); return; }
-      if (CFG.ONLINE_TOKENS.some((t) => body.includes(t))) { finish(true, "already connected"); return; }
+      if (CFG.ONLINE_TOKENS.some((t) => body.includes(t))) { finish(true, 'already connected'); return; }
 
       // Portal replaced its form after our click -> it accepted the login.
-      if (submitted && !findButton() && Date.now() - started > 4000) {
-        finish(true, "portal form disappeared");
-        return;
+      if (btnRef && !document.contains(btnRef) && Date.now() - started > 2000) {
+        finish(true, 'portal form disappeared'); return;
       }
-      if (Date.now() - started > CFG.DEADLINE_MS) finish(false, "no confirmation from the portal");
+      if (Date.now() - started > CFG.DEADLINE_MS) finish(false, 'no confirmation from the portal');
     }, CFG.TICK_MS);
   }
 
@@ -95,24 +100,22 @@
     if (finished) return;
     finished = true;
     if (observer) { observer.disconnect(); observer = null; }
-    send({ type: "done", ok, via: ok ? why : undefined, error: ok ? undefined : why });
+    send({ type: 'done', ok, via: ok ? why : undefined, error: ok ? undefined : why });
   }
 
   /* --------------------------------------------------------------- boot */
 
   async function boot() {
     try {
-      const r = await fetch(browser.runtime.getURL("config.json"));
-      const j = JSON.parse(await r.text());
+      const j = JSON.parse(await (await fetch(browser.runtime.getURL('config.json'))).text());
       PORTAL_PREFIX = `https://${j.HOST}:${j.PORTAL_PORT}${j.PORTAL_PATH}`;
     } catch (e) { /* fall back to whatever URL we are on */ }
-    if (!PORTAL_PREFIX) PORTAL_PREFIX = location.origin + "/portalpage/";
-    send({ type: "ready" });
+    if (!PORTAL_PREFIX) PORTAL_PREFIX = location.origin + '/portalpage/';
 
     const body = text().toLowerCase();
     if (!findButton()) {
-      if (CFG.ONLINE_TOKENS.some((t) => body.includes(t))) finish(true, "already connected");
-      else send({ type: "done", ok: false, error: "connect button not found" });
+      if (CFG.ONLINE_TOKENS.some((t) => body.includes(t))) finish(true, 'already connected');
+      else send({ type: 'done', ok: false, error: 'connect button not found' });
       return;
     }
 
@@ -121,9 +124,9 @@
     // The portal renders parts of the form with jQuery after load.
     observer = new MutationObserver(() => { if (!submitted) trySubmit(); });
     observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
-    setTimeout(trySubmit, 500);                     // belt & braces
+    setTimeout(trySubmit, 500);                 // belt & braces
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();

@@ -2,15 +2,7 @@
   "HOST": "sb.sdn.utm.md",
   "PORTAL_PORT": 19008,
   "PORTAL_PATH": "/portalpage/",
-  "SSID": "UTM-WiNetUni_GUEST",
-  "CPD_BASES": [
-    "http://detectportal.firefox.com/",
-    "http://captive.apple.com/"
-  ],
-  "CANARY_HOSTS": [
-    "detectportal.firefox.com",
-    "captive.apple.com"
-  ],
+  "CANARY_HOSTS": ["detectportal.firefox.com", "captive.apple.com"],
   "REDIRECT_STRIKE_LIMIT": 2,
   "STALE_MS": 15000,
   "POLL_MS": 3000,
@@ -18,7 +10,5 @@
   "CONNECT_TIMEOUT_MS": 15000,
   "COOLDOWN_MS": 20000,
   "MAX_ATTEMPTS": 5,
-  "TAB_TTL_MS": 15000,
-  "KEEP_TABS": false,
   "DEBUG": false
 }

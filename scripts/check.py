@@ -51,6 +51,12 @@ if not bss.get("strict_min_version"):
 else:
     ok(f"strict_min_version: {bss['strict_min_version']}")
 
+desc = manifest.get("description", "")
+if len(desc) < 40:
+    fail("description must clearly explain what the add-on does (No Surprises policy)")
+else:
+    ok(f"description present ({len(desc)} chars)")
+
 # ------------------------------------------------------- single-site scoping
 host = cfg["HOST"]
 portal_match = f"https://{host}:{cfg['PORTAL_PORT']}{cfg['PORTAL_PATH']}*"
@@ -79,11 +85,10 @@ elif missing:
 else:
     ok(f"permissions minimal and host-scoped ({len(perms)} entries)")
 
-optional = set(manifest.get("optional_permissions", []))
-if optional and not all(host in o for o in optional):
-    fail(f"optional_permissions must stay on {host}: {sorted(optional)}")
+if manifest.get("optional_permissions"):
+    fail("optional_permissions not needed — drop them to keep the grant story simple")
 else:
-    ok("optional_permissions stay on the portal host")
+    ok("no optional_permissions")
 
 # ------------------------------------------------------------ file integrity
 bg = manifest["background"]["scripts"]
@@ -92,19 +97,25 @@ if bg != ["background/background.js"]:
 for rel in bg + cs[0]["js"]:
     if not (SRC / rel).is_file():
         fail(f"declared file missing: extension/{rel}")
-popup = manifest["browser_action"]["default_popup"]
-for rel in (popup, popup.replace(".html", ".css"), popup.replace(".html", ".js")):
-    if not (SRC / rel).is_file():
-        fail(f"popup asset missing: extension/{rel}")
+ba = manifest["browser_action"]
+if ba.get("default_popup"):
+    fail("no popup expected — the toolbar icon is the on/off switch")
+elif "onClicked" not in (SRC / "background" / "background.js").read_text():
+    fail("background must handle browserAction.onClicked (the icon toggle)")
+else:
+    ok("icon click handler present, no popup to maintain")
 for size, icon in manifest["icons"].items():
     if not (SRC / icon).is_file():
         fail(f"icon missing: extension/{icon}")
+for state in ("on", "off", "busy", "wait"):
+    if not (SRC / "icons" / f"icon-{state}.svg").is_file():
+        fail(f"state icon missing: extension/icons/icon-{state}.svg")
 ok("all referenced files exist")
 
 if not (SRC / "config.json").is_file():
     fail("config.json missing")
 else:
-    ok(f"config.json: {host}:{cfg['PORTAL_PORT']}{cfg['PORTAL_PATH']} ssid={cfg['SSID']}")
+    ok(f"config.json: {host}:{cfg['PORTAL_PORT']}{cfg['PORTAL_PATH']}")
 
 # ---------------------------------------------------------------- js syntax
 node = shutil.which("node")
@@ -118,12 +129,28 @@ if node:
 else:
     print("note  node not found — skipped JS syntax check")
 
-# -------------------------------------------------------------- hard-coded host
-for js in list(SRC.rglob("*.js")) + [SRC / "popup" / "popup.html"]:
+# ----------------------------------------------------- remote code / eval / hosts
+BANNED = [
+    (r"\beval\s*\(", "eval()"),
+    (r"new\s+Function\s*\(", "new Function()"),
+    (r"\bdocument\.write\s*\(", "document.write()"),
+    (r"\binnerHTML\s*=", "innerHTML assignment"),
+    (r"createElement\s*\(\s*['\"]script", "injected <script>"),
+    (r"https?://[\w.-]+\.(?:js|wasm)\b", "remote script reference"),
+]
+for js in sorted(SRC.rglob("*.js")):
     body = js.read_text(encoding="utf-8")
-    urls = set(re.findall(r"https?://[A-Za-z0-9.\-]+(?::\d+)?", body))
-    # Comments are stripped first: prose about the portal URL is not a request.
+    code = re.sub(r"/\*.*?\*/", "", body, flags=re.S)
+    code = re.sub(r"//[^\n]*", "", code)
+    for pat, name in BANNED:
+        if re.search(pat, code):
+            fail(f"{js.relative_to(ROOT)} uses banned construct: {name}")
+ok("no eval/remote-code constructs")
+
+for js in list(SRC.rglob("*.js")):
+    body = js.read_text(encoding="utf-8")
     code_only = re.sub(r"/\*.*?\*/", "", body, flags=re.S)
+    code_only = re.sub(r"(?m)^\s*(//).*$", "", code_only)
     code_urls = set(re.findall(r"https?://[A-Za-z0-9.\-]+(?::\d+)?", code_only))
     foreign = {u for u in code_urls if host not in u and not any(c in u for c in cfg["CANARY_HOSTS"])}
     if foreign:
@@ -131,7 +158,7 @@ for js in list(SRC.rglob("*.js")) + [SRC / "popup" / "popup.html"]:
 ok("no third-party hosts referenced")
 
 total = sum(p.stat().st_size for p in SRC.rglob("*") if p.is_file())
-print(f"\nsource size: {total} bytes across {len(list(SRC.rglob('*')))} entries")
+print(f"\nsource size: {total} bytes across {len([p for p in SRC.rglob('*') if p.is_file()])} files")
 if problems:
     print(f"\n{len(problems)} problem(s) found")
     sys.exit(1)

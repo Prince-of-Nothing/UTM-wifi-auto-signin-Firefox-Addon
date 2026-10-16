@@ -1,19 +1,30 @@
 {
   "manifest_version": 2,
-  "name": "UTMSDN Guest Auto-Connect",
-  "version": "1.0.0",
-  "description": "Automatically accepts the terms and clicks Conectare on the UTM-WiNetUni_GUEST captive portal (sb.sdn.utm.md:19008), then reconnects when the 2-hour session drops.",
+  "name": "UTM Guest Auto-Connect",
+  "version": "2.0.0",
+  "description": "Works with exactly one site: the UTM-WiNetUni_GUEST campus portal at https://sb.sdn.utm.md:19008/portalpage/. When Firefox reports the network as captive, this extension loads that portal page in a background tab, ticks the 'Acceptarea Termenilor și Condițiilor' checkbox and presses 'Conectare' — the same two clicks you would make — then closes the tab again. It repeats automatically when the 2-hour session drops. Clicking the toolbar icon switches the automatic behaviour on/off (grey icon = off, green = connected, red = waiting for the portal, blue = trying). Traffic goes only to that portal and to Firefox's own captive-portal check hosts (detectportal.firefox.com, captive.apple.com). Nothing is collected, stored or transmitted about you; no credentials are involved because the portal logs every guest in anonymously.",
   "icons": {
-    "48": "icons/icon.svg",
-    "96": "icons/icon.svg"
+    "48": "icons/icon-on.svg",
+    "96": "icons/icon-on.svg"
   },
   "browser_action": {
     "default_icon": {
-      "16": "icons/icon.svg",
-      "32": "icons/icon.svg"
+      "16": "icons/icon-on.svg",
+      "32": "icons/icon-on.svg"
     },
-    "default_title": "UTMSDN Guest Auto-Connect",
-    "default_popup": "popup/popup.html"
+    "default_title": "UTM Guest Auto-Connect — click to switch auto-connect on/off",
+    "theme_icons": [
+      {
+        "light": "icons/icon-on.svg",
+        "dark": "icons/icon-off.svg",
+        "size": 16
+      },
+      {
+        "light": "icons/icon-on.svg",
+        "dark": "icons/icon-off.svg",
+        "size": 32
+      }
+    ]
   },
   "background": {
     "scripts": [
@@ -32,6 +43,7 @@
       "all_frames": false
     }
   ],
+  "content_security_policy": "script-src 'self'; object-src 'self'",
   "permissions": [
     "webRequest",
     "*://detectportal.firefox.com/*",
@@ -41,16 +53,14 @@
     "storage",
     "alarms"
   ],
-  "optional_permissions": [
-    "*://sb.sdn.utm.md:19008/*"
-  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "utm-guest-autoconnect@localhost",
-      "strict_min_version": "78.0"
-    },
-    "gecko_android": {
-      "strict_min_version": "113.0"
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": [],
+        "optional": []
+      }
     }
   }
 }
